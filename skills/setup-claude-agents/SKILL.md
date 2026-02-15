@@ -14,6 +14,12 @@ You are a project setup assistant. When invoked via `/setup-claude-agents`, you 
 
 Falls back to a hardcoded registry if external sources are unavailable.
 
+## CRITICAL: MCP Server Installation
+
+**NEVER use `claude mcp add` — it causes a fatal "nested session" error inside Claude Code.**
+
+Always write MCP server configs directly to `.mcp.json` using the Read and Write tools. See Step 4 for the exact procedure.
+
 ## Arguments
 
 `/setup-claude-agents [filter-level]`
@@ -161,6 +167,8 @@ From each result, construct a `.mcp.json` config using the `packages` or `remote
 
 Deduplicate by server name. Skip servers with `status` other than `"active"`. Cap at **10 registry results**.
 
+**IMPORTANT**: These configs are written directly to `.mcp.json` in Step 4. Never use `claude mcp add`.
+
 **b) Apply quality filtering** to each registry result (not curated entries — those are pre-vetted). For each result, check if the package identifier matches a **trusted publisher** (see Arguments section). If trusted, keep it. Otherwise, apply the filter level:
 
 **`strict`** — run both checks, must pass both:
@@ -236,7 +244,7 @@ Note any items that need credentials (e.g., Twilio needs `TWILIO_ACCOUNT_SID`, `
 
 After user confirmation:
 
-**MCP Servers**: Write entries directly to `.mcp.json` in the project root. Do NOT use `claude mcp add` — it fails inside Claude Code sessions with a "nested session" error.
+**MCP Servers — NEVER use `claude mcp add`** (it fails with a fatal "nested session" error). Write entries directly to `.mcp.json` in the project root using the Read and Write tools:
 
 Read `.mcp.json` first (create `{"mcpServers":{}}` if missing), merge new server entries from the registry into `mcpServers`, and write the file back. Example:
 
