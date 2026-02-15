@@ -1,29 +1,93 @@
 ---
 name: setup-claude-agents
-description: Analyze a project and install the right Claude Code agents, skills, slash commands, and MCP servers from the awesome-claude-code community registry
+description: Analyze a project and install the right Claude Code agents, skills, slash commands, MCP servers, and plugins from community registries
+allowed-tools: Read, Write, Edit, Glob, Grep, WebFetch, Bash(curl *), Bash(gh api *), Bash(mkdir *), Bash(ls *), Bash(wc *)
 ---
 
 # Setup Claude Agents
 
-You are a project setup assistant. When invoked via `/setup-claude-agents`, you analyze the current project and install the right Claude Code agents, skills, slash commands, and MCP servers. You discover tooling dynamically from the [awesome-claude-code community registry](https://github.com/hesreallyhim/awesome-claude-code) (~200+ curated entries), falling back to a hardcoded registry if the CSV is unavailable.
+You are a project setup assistant. When invoked via `/setup-claude-agents`, you analyze the current project and install the right Claude Code agents, skills, slash commands, MCP servers, and plugins. You discover tooling dynamically from three registries:
+
+1. **[awesome-claude-code](https://github.com/hesreallyhim/awesome-claude-code)** (~200+ curated skills, commands, resources as CSV)
+2. **[Official MCP Registry](https://registry.modelcontextprotocol.io)** (searchable API for MCP servers)
+3. **[Plugin marketplace](https://github.com/ComposioHQ/awesome-claude-plugins)** (~25 curated Claude Code plugins as JSON)
+
+Falls back to a hardcoded registry if external sources are unavailable.
+
+## Arguments
+
+`/setup-claude-agents [filter-level]`
+
+The optional `filter-level` argument controls quality filtering for MCP Registry API results. Parse `$ARGUMENTS` for one of these values:
+
+| Level | Description |
+|-------|-------------|
+| `strict` | Trusted publishers pass automatically. Others need: GitHub stars ≥10 AND (npm ≥1K downloads/month OR PyPI ≥1K/month). Repository URL required. |
+| `moderate` | **(default if omitted)** Trusted publishers pass. Others need: GitHub stars ≥5 OR npm ≥500/month. Repository URL required. |
+| `light` | Only check: `repository.url` exists, `status == "active"`. No external API calls for quality. Fast but admits unvetted servers. |
+| `unfiltered` | No quality filtering. All active registry results are shown. |
+
+If `$ARGUMENTS` contains an unrecognized value, treat it as `moderate` and note the fallback to the user.
+
+**Trusted publishers** (bypass quality checks at all filter levels):
+- `@modelcontextprotocol/*`, `@anthropic-ai/*` (Anthropic)
+- `awslabs.*` (AWS)
+- `com.stripe/*` (Stripe)
+- `@playwright/*` (Microsoft)
+- `@twilio-alpha/*` (Twilio)
 
 ## Workflow
 
 ### Step 1: EXPLORE the project
 
-Read these files if they exist (skip missing ones silently):
+Scan the project to build a raw inventory. Skip missing files silently.
 
-- `README.md`, `SPEC.md`, `PLAN.md`
-- `package.json` (deps, devDeps, scripts, workspaces)
-- Framework configs: `svelte.config.js`, `next.config.js`, `nuxt.config.ts`, `angular.json`, `vite.config.ts`, `astro.config.mjs`
-- Infrastructure: `cdk.json`, `cdk.ts`, `serverless.yml`, `terraform/`, `pulumi/`, `Dockerfile`, `.github/workflows/`
-- Database: `prisma/schema.prisma`, `drizzle.config.ts`, `migrations/`, `knexfile.js`
-- `tsconfig.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`
-- Directory structure (top-level `ls` and key subdirectories)
+#### 1a. Dependency manifests
 
-For monorepos: scan workspace directories listed in `package.json` workspaces or `pnpm-workspace.yaml`.
+Read every manifest that exists and extract dependency names:
 
-### Step 1b: FETCH the community registry
+| Manifest | Extract |
+|----------|---------|
+| `package.json` | keys from `dependencies`, `devDependencies`, `peerDependencies`; note `scripts`, `workspaces` |
+| `pyproject.toml` | `[project.dependencies]`, `[tool.poetry.dependencies]` |
+| `requirements.txt` / `requirements/*.txt` | each line (strip version specifiers) |
+| `Cargo.toml` | `[dependencies]`, `[dev-dependencies]` |
+| `go.mod` | all `require` entries |
+| `Gemfile` | all `gem` names |
+| `composer.json` | `require`, `require-dev` keys |
+| `build.gradle` / `build.gradle.kts` | `implementation`, `testImplementation` coordinates |
+| `pom.xml` | `<dependency>` `<artifactId>` values |
+| `mix.exs` | `deps` function return values |
+| `pubspec.yaml` | `dependencies`, `dev_dependencies` keys |
+
+If a manifest type not listed here is present, extract dependency names the same way.
+
+For monorepos: also scan workspace directories listed in `package.json` workspaces, `pnpm-workspace.yaml`, `lerna.json`, etc.
+
+#### 1b. Languages
+
+Glob for source file extensions at top-level and `src/` (not the entire tree) to detect languages. Examples: `*.ts`/`*.tsx` → TypeScript, `*.py` → Python, `*.rs` → Rust, `*.go` → Go, `*.rb` → Ruby, `*.java`/`*.kt` → Java/Kotlin, `*.php` → PHP, `*.ex`/`*.exs` → Elixir, `*.dart` → Dart, `*.swift` → Swift.
+
+#### 1c. Infrastructure patterns
+
+Check for presence of:
+
+- **Containers**: `Dockerfile`, `docker-compose.yml`
+- **CI/CD**: `.github/workflows/`, `.gitlab-ci.yml`, `.circleci/`, `Jenkinsfile`
+- **IaC**: `terraform/`, `*.tf`, `pulumi/`, `cdk.json`, `serverless.yml`
+- **Database schemas**: `prisma/`, `migrations/`, `*.sql`, `drizzle.config.*`
+- **Claude Code**: `.claude-plugin/`, `.claude/`, `SKILL.md`, `.mcp.json`
+- **Monorepo**: `pnpm-workspace.yaml`, `lerna.json`, `nx.json`, `turbo.json`
+
+#### 1d. Documentation
+
+Read `README.md`, `SPEC.md`, `PLAN.md` if present. Note planned features, architecture, and tech choices described there.
+
+Also run a top-level `ls` and check key subdirectories for overall project structure.
+
+### Step 1b: FETCH registries
+
+#### Community registry (skills, commands, resources)
 
 Download the awesome-claude-code CSV to a temp file:
 
@@ -35,35 +99,89 @@ Verify it downloaded correctly by reading the first 2 lines to confirm the heade
 
 **Important**: The CSV is ~500+ rows. Do NOT read the entire file. Use the Grep tool to search it by keyword in later steps.
 
+#### Plugin marketplace
+
+Download the plugin marketplace index:
+
+```bash
+curl -sL -o /tmp/claude-plugins-marketplace.json "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-plugins/main/marketplace.json"
+```
+
+This JSON contains ~25 curated Claude Code plugins with `name`, `category`, `description`, `author`, and `tags` fields. If the download fails, set `plugins_available = false` and skip plugin recommendations.
+
+#### Official MCP Registry (MCP servers)
+
+The Official MCP Registry at `registry.modelcontextprotocol.io` provides a searchable API for discovering MCP servers. It is queried directly in Step 3 — no upfront download needed.
+
 ### Step 2: ANALYZE what the project needs
 
-Determine:
+Build a **tech stack fingerprint** from what Step 1 discovered. This is NOT a fixed vocabulary — it's derived from the actual project.
 
-- **Languages**: TypeScript, Python, Rust, Go, etc.
-- **Frameworks**: SvelteKit, Next.js, Nuxt, Angular, FastAPI, Django, Express, etc.
-- **Cloud services**: AWS (CDK, Lambda, DynamoDB, etc.), GCP, Azure
-- **Databases**: DynamoDB, PostgreSQL, MongoDB, Redis, etc.
-- **Testing**: Vitest, Jest, Playwright, Pytest, etc.
-- **External APIs/services**: Stripe, Twilio, SendGrid, Auth0, etc.
-- **Planned but not implemented**: from spec/plan files
+#### Raw fingerprint
 
-After analysis, produce a **tech stack fingerprint** — a flat list of lowercase keywords that will drive CSV matching. Include all that apply:
+Collect three lists from Step 1 results:
 
-- **Languages**: `typescript`, `javascript`, `python`, `rust`, `go`, `java`, `ruby`, `php`, `swift`, `kotlin`
-- **Frameworks**: `sveltekit`, `svelte`, `react`, `nextjs`, `nuxt`, `vue`, `angular`, `astro`, `remix`, `express`, `fastapi`, `django`, `flask`, `rails`, `laravel`, `spring`
-- **Infra**: `aws`, `cdk`, `terraform`, `pulumi`, `docker`, `kubernetes`, `gcp`, `azure`, `cloudflare`, `vercel`, `netlify`
-- **Databases**: `postgresql`, `postgres`, `mongodb`, `redis`, `dynamodb`, `prisma`, `drizzle`, `sqlite`, `mysql`, `supabase`
-- **Services**: `stripe`, `twilio`, `auth0`, `firebase`, `openai`, `anthropic`, `bedrock`, `sendgrid`
-- **Activities**: `testing`, `security`, `deployment`, `ci-cd`, `monitoring`, `linting`, `documentation`
+- **languages** — detected from source file extensions (e.g. `typescript`, `python`, `rust`, `go`)
+- **dependencies** — actual package/crate/module names from manifests (e.g. `svelte`, `@aws-sdk/client-dynamodb`, `prisma`, `fastapi`)
+- **infrastructure** — patterns detected in 1c (e.g. `docker`, `github-actions`, `cdk`, `terraform`, `prisma-migrations`)
+
+#### Search terms
+
+Derive a flat list of lowercase search keywords from the raw fingerprint:
+
+1. Start with all language names
+2. Add each dependency name, but:
+   - Strip scopes/orgs (`@org/foo` → `foo`)
+   - Split on `-` and `/` to get sub-terms (`@aws-sdk/client-dynamodb` → `aws`, `sdk`, `client`, `dynamodb`)
+   - Add known associations: Next.js → also add `react`; Nuxt → also add `vue`; SvelteKit → also add `svelte`; etc.
+3. Add infrastructure pattern names
+4. Add terms from README/SPEC/PLAN that indicate planned tech choices
+
+**Filtering**: Skip pure-utility deps that don't indicate the tech stack (e.g. `lodash`, `chalk`, `debug`, `dotenv`, `uuid`, `rimraf`). Focus on frameworks, databases, cloud SDKs, runtimes, and tools.
 
 ### Step 3: RECOMMEND tooling
 
-If `registry_available = true`, search the CSV at `/tmp/awesome-claude-code-registry.csv` using the Grep tool (case-insensitive). For each fingerprint keyword, search the CSV. Also fetch all rows with Category "Agent Skills" (broadly applicable). Deduplicate results by the ID column. **Exclude** any rows where Active is `FALSE` or Stale is `TRUE`.
+If `registry_available = true`, search the CSV at `/tmp/awesome-claude-code-registry.csv` using the Grep tool (case-insensitive). For each **search term** from the fingerprint, search the CSV. Also fetch all rows with Category "Agent Skills" (broadly applicable). Deduplicate results by the ID column. **Exclude** any rows where Active is `FALSE` or Stale is `TRUE`.
 
-Present recommendations in **5 sections**:
+Present recommendations in **6 sections**:
 
 #### 1. MCP Servers
-From the hardcoded MCP Servers table below (unchanged). Match against detected stack.
+
+**a) Search the Official MCP Registry** for each relevant search term (frameworks, databases, cloud providers — skip generic terms like language names):
+
+```bash
+curl -sL "https://registry.modelcontextprotocol.io/v0.1/servers?search=<term>&version=latest&limit=5"
+```
+
+From each result, construct a `.mcp.json` config using the `packages` or `remotes` data:
+
+- `registryType: "npm"` → `{"type":"stdio","command":"npx","args":["-y","<identifier>"]}`
+- `registryType: "pypi"` → `{"type":"stdio","command":"uvx","args":["<identifier>"]}`
+- `remotes` with `type: "streamable-http"` → `{"type":"http","url":"<url>"}`
+
+Deduplicate by server name. Skip servers with `status` other than `"active"`. Cap at **10 registry results**.
+
+**b) Apply quality filtering** to each registry result (not curated entries — those are pre-vetted). For each result, check if the package identifier matches a **trusted publisher** (see Arguments section). If trusted, keep it. Otherwise, apply the filter level:
+
+**`strict`** — run both checks, must pass both:
+1. GitHub stars: extract `repository.url`, run `gh api repos/{owner}/{repo} --jq '.stargazers_count'` — require ≥10
+2. Download count: for npm packages, run `curl -sL "https://api.npmjs.org/downloads/point/last-month/<identifier>"` and check `.downloads` ≥1,000. For PyPI, run `curl -sL "https://pypistats.org/api/packages/<identifier>/recent"` and check `.data.last_month` ≥1,000.
+
+**`moderate`** (default) — run both checks, must pass at least one:
+1. GitHub stars ≥5
+2. npm/PyPI downloads ≥500/month
+
+**`light`** — only check that `repository.url` exists and is non-empty. No API calls.
+
+**`unfiltered`** — skip all quality checks.
+
+If a quality check API call fails (404, timeout), treat that signal as absent — don't disqualify the server, but don't count it as passing either. In `strict` mode, a server must pass the remaining check. In `moderate`, it passes if the other check succeeds.
+
+Show filtered-out servers in a collapsed note (e.g., "3 servers filtered out by quality checks") so the user knows they exist.
+
+**c) Check the Curated MCP Servers table** below. Match each server's **Match When** criteria against the raw fingerprint. These curated entries have vetted configs and take priority over registry results for the same server.
+
+**Merge** results from (a), (b), and (c). Curated entries override registry entries when both match the same server.
 
 #### 2. Agent Skills (from community registry)
 Show matching "Agent Skills" category entries:
@@ -87,7 +205,22 @@ Show matching entries from "CLAUDE.md Files", "Hooks", and "Workflows" categorie
 | Display Name | Category | Description excerpt | Primary Link |
 
 #### 5. Agents
-From the hardcoded Agent Roles table below (unchanged). Match against detected stack.
+From the hardcoded Agent Roles table below. Match each agent's **Match When** criteria against the raw fingerprint (dependencies, languages, infrastructure patterns).
+
+**Selection rules:**
+1. Always include `code-reviewer` and `security-auditor` (read-only, universally useful)
+2. Always include at least one **implementation agent** (with Write/Edit tools) matching the project's primary language or activity — never recommend only read-only agents
+3. Cap at **6 agents total**; prioritize agents matching the project's primary activity
+
+#### 6. Plugins (from plugin marketplace)
+
+If `plugins_available = true`, read `/tmp/claude-plugins-marketplace.json` and match plugins whose `tags` overlap with the search terms. Show matching entries:
+
+| Plugin | Category | Why | Repo |
+|--------|----------|-----|------|
+| name | category | Reason based on description + tag match | `https://github.com/ComposioHQ/awesome-claude-plugins/tree/main/<name>` |
+
+Plugins are **NOT auto-installed** — present as links for the user to install via `claude plugin add <repo-url>`.
 
 ---
 
@@ -153,25 +286,28 @@ Write `.claude/.setup-manifest.json` tracking everything installed:
 ```json
 {
   "mcp": ["sequential-thinking", "awslabs-core-mcp-server"],
+  "mcp_from_registry": ["io.github.example/some-server"],
   "skills": ["owasp-security"],
   "agents": ["frontend-dev", "backend-dev", "code-reviewer"],
   "commands": ["review", "commit", "test-plan"],
+  "plugins": [],
   "references": [
     {"name": "React CLAUDE.md", "type": "CLAUDE.md Files", "link": "https://github.com/..."}
   ],
   "detected": {
-    "sveltekit": true,
-    "typescript": true,
-    "aws-cdk": true
+    "languages": ["typescript", "python"],
+    "dependencies": ["svelte", "@aws-sdk/client-dynamodb", "prisma"],
+    "infrastructure": ["docker", "github-actions", "cdk"],
+    "search_terms": ["svelte", "aws", "dynamodb", "prisma", "typescript", "python"]
   },
-  "registry_source": "awesome-claude-code-csv",
+  "registries_used": ["awesome-claude-code-csv", "mcp-registry-api", "plugin-marketplace"],
   "registry_fetched_at": "<ISO 8601 timestamp>",
   "_generated_at": "<ISO 8601 timestamp>",
   "_comment": "Managed by /setup-claude-agents skill. Do not edit manually."
 }
 ```
 
-Set `registry_source` to `"awesome-claude-code-csv"` when the CSV was used, or `"fallback"` when the hardcoded registry was used.
+`registries_used` tracks which sources were available. Possible values: `"awesome-claude-code-csv"`, `"mcp-registry-api"`, `"plugin-marketplace"`, `"fallback"`.
 
 ### Step 6: RECONCILE on re-run
 
@@ -228,22 +364,72 @@ Read SPEC.md for product requirements and PLAN.md for architecture decisions bef
 
 ## Registry
 
-### MCP Servers
+### Official MCP Registry API
 
-Add entries to `.mcp.json` `mcpServers` object. Do NOT use `claude mcp add`.
+Search for MCP servers dynamically using the Official MCP Registry:
 
-| Name | Config | Good For |
-|------|--------|----------|
-| awslabs-core-mcp-server | `{"type":"stdio","command":"uvx","args":["awslabs.core-mcp-server@latest"]}` | Any AWS project |
-| awslabs-aws-iac-mcp-server | `{"type":"stdio","command":"uvx","args":["awslabs.aws-iac-mcp-server@latest"]}` | CDK, CloudFormation, SAM |
-| awslabs-dynamodb-mcp-server | `{"type":"stdio","command":"uvx","args":["awslabs.dynamodb-mcp-server@latest"]}` | DynamoDB table design |
-| awslabs-aws-serverless-mcp-server | `{"type":"stdio","command":"uvx","args":["awslabs.aws-serverless-mcp-server@latest","--allow-write","--allow-sensitive-data-access"]}` | Lambda, SQS, API Gateway |
-| awslabs-aws-documentation-mcp-server | `{"type":"stdio","command":"uvx","args":["awslabs.aws-documentation-mcp-server@latest"]}` | AWS documentation lookup |
-| stripe | `{"type":"http","url":"https://mcp.stripe.com/"}` | Stripe payments (run `claude /mcp` to authenticate after) |
-| sequential-thinking | `{"type":"stdio","command":"npx","args":["-y","@modelcontextprotocol/server-sequential-thinking"]}` | Complex reasoning (any project) |
-| twilio | `{"type":"stdio","command":"npx","args":["-y","@twilio-alpha/mcp","$SID/$KEY:$SECRET","--services","messaging"]}` | SMS/voice (needs TWILIO_ACCOUNT_SID, TWILIO_API_KEY, TWILIO_API_SECRET) |
-| playwright | `{"type":"stdio","command":"npx","args":["-y","@anthropic-ai/mcp-server-playwright"]}` | Browser testing |
-| postgres | `{"type":"stdio","command":"npx","args":["-y","@anthropic-ai/mcp-server-postgres"]}` | PostgreSQL databases |
+```
+GET https://registry.modelcontextprotocol.io/v0.1/servers?search=<keyword>&version=latest&limit=<n>
+```
+
+Response schema:
+```json
+{
+  "servers": [{
+    "server": {
+      "name": "org.name/server-name",
+      "description": "What this server does",
+      "version": "1.0.0",
+      "packages": [{
+        "registryType": "npm",          // or "pypi", "oci"
+        "identifier": "@scope/pkg-name", // npm package, PyPI package, or Docker image
+        "version": "1.0.0",
+        "transport": { "type": "stdio" },
+        "environmentVariables": [{ "name": "API_KEY", "isSecret": true }]
+      }],
+      "remotes": [{
+        "type": "streamable-http",       // or "sse"
+        "url": "https://example.com/mcp"
+      }]
+    },
+    "_meta": {
+      "io.modelcontextprotocol.registry/official": {
+        "status": "active",
+        "isLatest": true
+      }
+    }
+  }],
+  "metadata": { "nextCursor": "...", "count": 5 }
+}
+```
+
+**Config construction rules** — convert registry entries to `.mcp.json` format:
+
+| Registry field | `.mcp.json` config |
+|----------------|-------------------|
+| `packages[0].registryType == "npm"` | `{"type":"stdio","command":"npx","args":["-y","<identifier>"]}` |
+| `packages[0].registryType == "pypi"` | `{"type":"stdio","command":"uvx","args":["<identifier>"]}` |
+| `remotes[0].type == "streamable-http"` | `{"type":"http","url":"<url>"}` |
+| `environmentVariables` present | Note required env vars for user; add to config `"env"` if needed |
+
+Prefer `packages` (local stdio) over `remotes` (HTTP) when both are available.
+
+### Curated MCP Servers
+
+Vetted server configs that take priority over registry results. Add entries to `.mcp.json` `mcpServers` object. Do NOT use `claude mcp add`.
+
+| Name | Config | Match When |
+|------|--------|------------|
+| sequential-thinking | `{"type":"stdio","command":"npx","args":["-y","@modelcontextprotocol/server-sequential-thinking"]}` | Always |
+| awslabs-core-mcp-server | `{"type":"stdio","command":"uvx","args":["awslabs.core-mcp-server@latest"]}` | Any dep containing `aws` or `@aws-sdk`, OR `cdk.json` present |
+| awslabs-aws-iac-mcp-server | `{"type":"stdio","command":"uvx","args":["awslabs.aws-iac-mcp-server@latest"]}` | `cdk.json` present, OR `aws-cdk-lib` in deps, OR CloudFormation/SAM templates |
+| awslabs-dynamodb-mcp-server | `{"type":"stdio","command":"uvx","args":["awslabs.dynamodb-mcp-server@latest"]}` | `dynamodb` in any dep name |
+| awslabs-aws-serverless-mcp-server | `{"type":"stdio","command":"uvx","args":["awslabs.aws-serverless-mcp-server@latest","--allow-write","--allow-sensitive-data-access"]}` | Lambda/SQS/API Gateway configs, OR `serverless.yml` present |
+| awslabs-aws-documentation-mcp-server | `{"type":"stdio","command":"uvx","args":["awslabs.aws-documentation-mcp-server@latest"]}` | Any dep containing `aws` or `@aws-sdk`, OR `cdk.json` present |
+| stripe | `{"type":"http","url":"https://mcp.stripe.com/"}` | `stripe` in any dep name (run `claude /mcp` to authenticate after) |
+| twilio | `{"type":"stdio","command":"npx","args":["-y","@twilio-alpha/mcp","$SID/$KEY:$SECRET","--services","messaging"]}` | `twilio` in any dep name (needs TWILIO_ACCOUNT_SID, TWILIO_API_KEY, TWILIO_API_SECRET) |
+| playwright | `{"type":"stdio","command":"npx","args":["-y","@anthropic-ai/mcp-server-playwright"]}` | `playwright` or `@playwright/test` in deps |
+| postgres | `{"type":"stdio","command":"npx","args":["-y","@anthropic-ai/mcp-server-postgres"]}` | `pg`, `postgres`, `prisma`, or `drizzle` in deps, OR `.sql` migration files |
 
 ### Fallback Skills Registry
 
@@ -260,19 +446,19 @@ Add entries to `.mcp.json` `mcpServers` object. Do NOT use `claude mcp add`.
 
 ### Agent Roles
 
-| Role | Tools | Good For |
-|------|-------|----------|
-| frontend-dev | Read, Write, Edit, Bash, Glob, Grep | UI components, pages, layouts (adapt prompt to detected framework: Svelte, React, Vue, Angular, Next.js, etc.) |
-| backend-dev | Read, Write, Edit, Bash, Glob, Grep | API routes, services, business logic, workers |
-| aws-architect | Read, Write, Edit, Bash, Glob, Grep | CDK stacks, CloudFormation, AWS infrastructure |
-| ai-engineer | Read, Write, Edit, Bash, Glob, Grep | LLM integration, Bedrock, OpenAI, prompt engineering |
-| mcp-developer | Read, Write, Edit, Bash, Glob, Grep | MCP server implementation, OAuth 2.1, JSON-RPC |
-| devops | Read, Write, Edit, Bash, Glob, Grep | CI/CD, Docker, monitoring, deployment |
-| code-reviewer | Read, Grep, Glob, Bash | Code quality review (read-only) |
-| test-automator | Read, Write, Edit, Bash, Glob, Grep | Unit, integration, E2E tests |
-| security-auditor | Read, Grep, Glob, Bash | Security review (read-only) |
-| dba | Read, Write, Edit, Bash, Glob, Grep | Database design (DynamoDB, PostgreSQL, etc.) |
-| terraform-engineer | Read, Write, Edit, Bash, Glob, Grep | Terraform/Pulumi IaC |
-| python-dev | Read, Write, Edit, Bash, Glob, Grep | Python backend (Django, FastAPI, Flask) |
-| rust-dev | Read, Write, Edit, Bash, Glob, Grep | Rust systems programming |
-| go-dev | Read, Write, Edit, Bash, Glob, Grep | Go backend services |
+| Role | Tools | Match When |
+|------|-------|------------|
+| frontend-dev | Read, Write, Edit, Bash, Glob, Grep | UI framework deps (react, vue, svelte, angular, solid, lit, etc.) OR `.svelte`/`.vue`/`.jsx`/`.tsx` files |
+| backend-dev | Read, Write, Edit, Bash, Glob, Grep | Server framework deps (express, fastapi, django, flask, gin, actix-web, spring, rails, laravel, phoenix, hono, etc.) |
+| aws-architect | Read, Write, Edit, Bash, Glob, Grep | `cdk.json` OR `aws-cdk-lib` in deps OR CloudFormation/SAM templates OR significant `@aws-sdk/*` usage |
+| ai-engineer | Read, Write, Edit, Bash, Glob, Grep | `.claude-plugin/` OR SKILL.md authoring OR AI/LLM deps (openai, anthropic, langchain, llamaindex, transformers, etc.) |
+| mcp-developer | Read, Write, Edit, Bash, Glob, Grep | `@modelcontextprotocol/sdk` in deps OR MCP server code OR `.mcp.json` with custom servers |
+| devops | Read, Write, Edit, Bash, Glob, Grep | CI/CD configs OR Dockerfiles OR deployment scripts |
+| dba | Read, Write, Edit, Bash, Glob, Grep | Database schemas, migration files, ORM deps (prisma, drizzle, sqlalchemy, typeorm, diesel, gorm, ecto, etc.) |
+| terraform-engineer | Read, Write, Edit, Bash, Glob, Grep | `*.tf` files OR `terraform/` OR `pulumi/` |
+| test-automator | Read, Write, Edit, Bash, Glob, Grep | Test framework deps (vitest, jest, playwright, pytest, rspec, junit, etc.) |
+| python-dev | Read, Write, Edit, Bash, Glob, Grep | Python is primary language (`pyproject.toml`/`requirements.txt` + significant `*.py` files) |
+| rust-dev | Read, Write, Edit, Bash, Glob, Grep | Rust is primary language (`Cargo.toml` + `*.rs` files) |
+| go-dev | Read, Write, Edit, Bash, Glob, Grep | Go is primary language (`go.mod` + `*.go` files) |
+| code-reviewer | Read, Grep, Glob, Bash | Always |
+| security-auditor | Read, Grep, Glob, Bash | Always |
