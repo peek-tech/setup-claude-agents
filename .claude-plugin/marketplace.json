@@ -1,0 +1,21 @@
+{
+  "name": "setup-claude-agents",
+  "owner": {
+    "name": "Peek Tech",
+    "email": "tech@peek.com"
+  },
+  "metadata": {
+    "description": "Project-aware setup of Claude Code agents, skills, and MCP servers",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "setup-claude-agents",
+      "description": "Analyze a project and install the right Claude Code agents, skills, and MCP servers from a curated registry",
+      "source": "./",
+      "skills": [
+        "./skills/setup-claude-agents"
+      ]
+    }
+  ]
+}
