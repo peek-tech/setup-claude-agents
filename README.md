@@ -4,8 +4,16 @@ A Claude Code plugin that analyzes your project and installs the right agents, s
 
 ## Installation
 
+First, add the marketplace:
+
 ```
-/plugin install peek-tech/setup-claude-agents
+/plugin marketplace add peek-tech/setup-claude-agents
+```
+
+Then install the plugin:
+
+```
+/plugin install setup-claude-agents@peek-tech-setup-claude-agents
 ```
 
 ## Usage
