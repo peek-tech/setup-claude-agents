@@ -91,19 +91,19 @@
     },
     {
       "name": "owasp-security",
-      "url": "https://raw.githubusercontent.com/VoltAgent/awesome-agent-skills/main/skills/owasp-security/SKILL.md",
+      "url": "https://raw.githubusercontent.com/agamm/claude-code-owasp/main/.claude/skills/owasp-security/SKILL.md",
       "description": "OWASP top 10 security best practices",
       "match_when": []
     },
     {
       "name": "better-auth",
-      "url": "https://raw.githubusercontent.com/VoltAgent/awesome-agent-skills/main/skills/better-auth/SKILL.md",
+      "url": "https://raw.githubusercontent.com/better-auth/skills/main/better-auth/best-practices/SKILL.md",
       "description": "OAuth, magic links, and auth patterns",
       "match_when": ["better-auth", "auth", "oauth", "lucia"]
     },
     {
       "name": "stripe-best-practices",
-      "url": "https://raw.githubusercontent.com/VoltAgent/awesome-agent-skills/main/skills/stripe-best-practices/SKILL.md",
+      "url": "https://raw.githubusercontent.com/stripe/ai/main/skills/stripe-best-practices/SKILL.md",
       "description": "Stripe integration patterns and best practices",
       "match_when": ["stripe"]
     }
