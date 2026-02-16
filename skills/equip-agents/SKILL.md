@@ -27,6 +27,10 @@ Create role-specific Claude Code agent `.md` files tailored to the detected tech
 | code-reviewer | Read, Grep, Glob, Bash | Always |
 | security-auditor | Read, Grep, Glob, Bash | Always |
 
+## From Preferred Installables
+
+Preferred agents arrive with `name` and `content` (full markdown with frontmatter). Write directly to `.claude/agents/<name>.md`. Skip prompt generation and role matching.
+
 ## Selection Rules
 
 1. **Always** include `code-reviewer` and `security-auditor`

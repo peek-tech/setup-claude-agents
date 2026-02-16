@@ -28,6 +28,14 @@ Skills are discovered by searching the awesome-claude-code CSV for "Agent Skills
 
 Exclude rows where Active is `FALSE` or Stale is `TRUE`.
 
+## From Preferred Installables
+
+Preferred skills arrive with `name` and `url` already resolved. Skip repo inspection — download directly:
+```bash
+mkdir -p .claude/skills/<name>
+curl -sL -o .claude/skills/<name>/SKILL.md "<url>"
+```
+
 ## Fallback Skills Registry
 
 Use these when the community registry is unavailable:

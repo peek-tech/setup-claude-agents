@@ -16,6 +16,10 @@ For every hook, prompt the user individually:
 
 Only install hooks the user explicitly approves.
 
+## From Preferred Installables
+
+Preferred hooks arrive with `event`, `matcher`, and `command` fields inline. Skip the WebFetch step — proceed directly to the merge procedure (read settings.json, merge, write). **Still require per-hook user approval.**
+
 ## Installation Procedure
 
 1. **Fetch details** — WebFetch the Primary Link to extract the event type, matcher, and shell command

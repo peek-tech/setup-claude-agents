@@ -1,0 +1,134 @@
+{
+  "mcp": [
+    {
+      "name": "sequential-thinking",
+      "config": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+      },
+      "description": "Step-by-step reasoning for complex problems",
+      "env_vars": [],
+      "match_when": []
+    },
+    {
+      "name": "github",
+      "config": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-github"],
+        "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}" }
+      },
+      "description": "GitHub issues, PRs, repos, and code search",
+      "env_vars": ["GITHUB_PERSONAL_ACCESS_TOKEN"],
+      "match_when": []
+    },
+    {
+      "name": "playwright",
+      "config": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["-y", "@playwright/mcp@latest"]
+      },
+      "description": "Browser automation and testing",
+      "env_vars": [],
+      "match_when": ["playwright", "react", "svelte", "vue", "next", "nuxt", "sveltekit"]
+    },
+    {
+      "name": "aws-core",
+      "config": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["-y", "@awslabs/mcp-server-aws-core"]
+      },
+      "description": "Core AWS service interactions",
+      "env_vars": [],
+      "match_when": ["aws", "cdk", "cloudformation", "sam", "lambda", "dynamodb", "s3"]
+    },
+    {
+      "name": "stripe",
+      "config": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["-y", "@stripe/mcp"],
+        "env": { "STRIPE_SECRET_KEY": "${STRIPE_SECRET_KEY}" }
+      },
+      "description": "Stripe payments API integration",
+      "env_vars": ["STRIPE_SECRET_KEY"],
+      "match_when": ["stripe"]
+    },
+    {
+      "name": "postgres",
+      "config": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-postgres"],
+        "env": { "POSTGRES_CONNECTION_STRING": "${POSTGRES_CONNECTION_STRING}" }
+      },
+      "description": "PostgreSQL database queries and schema inspection",
+      "env_vars": ["POSTGRES_CONNECTION_STRING"],
+      "match_when": ["postgres", "postgresql", "prisma", "drizzle", "knex", "pg"]
+    }
+  ],
+  "skills": [
+    {
+      "name": "mcp-builder",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/main/mcp-builder/SKILL.md",
+      "description": "Guide for building MCP servers",
+      "match_when": ["mcp", "modelcontextprotocol"]
+    },
+    {
+      "name": "webapp-testing",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/main/webapp-testing/SKILL.md",
+      "description": "Playwright-based web app testing",
+      "match_when": ["playwright", "react", "svelte", "vue", "next", "nuxt", "sveltekit"]
+    },
+    {
+      "name": "svelte5-development",
+      "url": "https://raw.githubusercontent.com/splinesreticulating/claude-svelte5-skill/main/SKILL.md",
+      "description": "Svelte 5 runes and SvelteKit patterns",
+      "match_when": ["svelte", "sveltekit"]
+    },
+    {
+      "name": "owasp-security",
+      "url": "https://raw.githubusercontent.com/VoltAgent/awesome-agent-skills/main/skills/owasp-security/SKILL.md",
+      "description": "OWASP top 10 security best practices",
+      "match_when": []
+    },
+    {
+      "name": "better-auth",
+      "url": "https://raw.githubusercontent.com/VoltAgent/awesome-agent-skills/main/skills/better-auth/SKILL.md",
+      "description": "OAuth, magic links, and auth patterns",
+      "match_when": ["better-auth", "auth", "oauth", "lucia"]
+    },
+    {
+      "name": "stripe-best-practices",
+      "url": "https://raw.githubusercontent.com/VoltAgent/awesome-agent-skills/main/skills/stripe-best-practices/SKILL.md",
+      "description": "Stripe integration patterns and best practices",
+      "match_when": ["stripe"]
+    }
+  ],
+  "commands": [],
+  "hooks": [],
+  "agents": [
+    {
+      "name": "code-reviewer",
+      "content": "---\nname: code-reviewer\ndescription: Thorough code reviewer focused on correctness, security, and maintainability\ntools: Read, Grep, Glob, Bash\nmodel: sonnet\nmemory: user\n---\nYou are a senior code reviewer at Peek Tech. Review code for correctness, security vulnerabilities, performance issues, and maintainability.\n\nPriorities:\n1. Security — flag injection, auth bypasses, data leaks, OWASP top 10\n2. Correctness — logic errors, edge cases, error handling gaps\n3. Maintainability — naming, complexity, duplication\n4. Performance — only flag obvious issues (N+1 queries, missing indexes, unbounded loops)\n\nBe direct. Skip praise. Flag issues with file:line references. Suggest fixes inline.",
+      "description": "Thorough code reviewer focused on correctness, security, and maintainability",
+      "match_when": []
+    },
+    {
+      "name": "security-auditor",
+      "content": "---\nname: security-auditor\ndescription: Security-focused auditor scanning for vulnerabilities and misconfigurations\ntools: Read, Grep, Glob, Bash\nmodel: sonnet\nmemory: user\n---\nYou are a security auditor at Peek Tech. Scan codebases for vulnerabilities, misconfigurations, and unsafe patterns.\n\nFocus areas:\n- Injection (SQL, command, XSS, template)\n- Authentication and authorization flaws\n- Secrets in code or config (API keys, tokens, passwords)\n- Dependency vulnerabilities (outdated packages with known CVEs)\n- Infrastructure misconfigurations (open ports, permissive IAM, public S3)\n- Insecure defaults and missing security headers\n\nReport findings with severity (critical/high/medium/low), file:line, and remediation steps.",
+      "description": "Security-focused auditor scanning for vulnerabilities and misconfigurations",
+      "match_when": []
+    },
+    {
+      "name": "ai-engineer",
+      "content": "---\nname: ai-engineer\ndescription: AI/LLM integration specialist for Claude Code plugins and MCP servers\ntools: Read, Write, Edit, Bash, Glob, Grep\nmodel: sonnet\nmemory: project\n---\nYou are an AI engineer at Peek Tech specializing in Claude Code plugin development, MCP server implementation, and LLM integration patterns.\n\nExpertise:\n- Claude Code SKILL.md authoring (frontmatter, allowed-tools, prompt engineering)\n- MCP server protocol (stdio, streamable-http, tool definitions)\n- Claude API integration (tool use, streaming, system prompts)\n- Plugin marketplace structure (.claude-plugin/marketplace.json)\n\nRead SPEC.md and PLAN.md before starting work. Follow existing skill file conventions.",
+      "description": "AI/LLM integration specialist for Claude Code plugins and MCP servers",
+      "match_when": ["claude", "mcp", "modelcontextprotocol", "anthropic", "openai", "langchain", "llamaindex"]
+    }
+  ],
+  "plugins": []
+}

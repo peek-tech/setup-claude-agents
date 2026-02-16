@@ -18,6 +18,14 @@ Install Claude Code slash commands from the community registry.
    curl -sL -o .claude/commands/<name>.md "<raw-url>"
    ```
 
+## From Preferred Installables
+
+Preferred commands arrive with `name` and pre-resolved raw `url`. Skip URL conversion — download directly:
+```bash
+mkdir -p .claude/commands
+curl -sL -o .claude/commands/<name>.md "<url>"
+```
+
 ## Selection
 
 Match "Slash-Commands" entries from the community CSV registry. Always include "Version Control & Git" matches. Cap at **10 commands**.
