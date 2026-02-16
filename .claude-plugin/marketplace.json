@@ -1,5 +1,5 @@
 {
-  "name": "claude-equip",
+  "name": "equip-claude-code",
   "owner": {
     "name": "Peek Tech",
     "email": "tech@peek.com"
@@ -10,7 +10,7 @@
   },
   "plugins": [
     {
-      "name": "claude-equip",
+      "name": "equip-claude-code",
       "description": "Analyze a project and install the right Claude Code agents, skills, slash commands, hooks, and MCP servers from community registries",
       "source": "./",
       "skills": [

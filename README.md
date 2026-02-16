@@ -1,4 +1,4 @@
-# claude-equip
+# equip-claude-code
 
 A Claude Code plugin that scans your project, figures out what tech stack you're using, and installs the right agents, skills, slash commands, hooks, MCP servers, and project rules — so Claude Code understands your codebase from the start.
 
@@ -15,8 +15,8 @@ Falls back to a hardcoded registry if any source is unavailable.
 Add the marketplace, then install the plugin:
 
 ```
-/plugin marketplace add peek-tech/claude-equip
-/plugin install claude-equip@peek-tech-claude-equip
+/plugin marketplace add peek-tech/equip-claude-code
+/plugin install equip-claude-code@peek-tech-equip-claude-code
 ```
 
 ## Usage
@@ -159,8 +159,8 @@ The included `setup-local.sh` script is separate from the plugin. It configures 
 
 ```bash
 # Clone and run the local setup
-git clone https://github.com/peek-tech/claude-equip.git
-cd claude-equip
+git clone https://github.com/peek-tech/equip-claude-code.git
+cd equip-claude-code
 
 # Local Ollama
 ./setup-local.sh
